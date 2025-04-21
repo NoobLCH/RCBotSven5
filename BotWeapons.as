@@ -92,7 +92,7 @@ final class CBotWeaponsInfo
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.9,"weapon_m16a1",64.0,2000.0,WEAP_FL_NONE|WEAP_FL_SECONDARY,13,200,800));
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_spanner",0.0,100.0,WEAP_FL_MELEE|WEAP_FL_UNDERWATER,2));
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.9,"weapon_greasegun",0.0,2000.0,WEAP_FL_NONE,9));
-        //Add Ins2Wep Support
+        // Ins2 weapons
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_ins2garand",0.0,3000.0,WEAP_FL_UNDERWATER,14)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_ins2m1a1para",0.0,3000.0,WEAP_FL_UNDERWATER,13)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_ins2m1928",0.0,3000.0,WEAP_FL_UNDERWATER,13)); 
@@ -150,9 +150,7 @@ final class CBotWeaponsInfo
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_ins2fg42",0.0,3000.0,WEAP_FL_UNDERWATER,14)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_ins2lewis",0.0,3000.0,WEAP_FL_UNDERWATER,14)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_ins2kar98k",0.0,3000.0,WEAP_FL_UNDERWATER,13));  
-        //Add CSwep Support
-        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_csglock18",0.0,3000.0,WEAP_FL_UNDERWATER,9));
-        //Add BDSC Support      
+        // BDSC weapons
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.9,"weapon_bd_glock",0.0,1500.0,WEAP_FL_UNDERWATER|WEAP_FL_SECONDARY,1,0.0,1500.0));
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.9,"weapon_bd_shotgun",0.0,768.0,WEAP_FL_NONE,8));
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.9,"weapon_bd_357",0.0,2000.0,WEAP_FL_NONE,7));
@@ -163,9 +161,16 @@ final class CBotWeaponsInfo
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_bd_sniperrifle",512.0,8000.0,WEAP_FL_SNIPE,10)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_bd_m249",60.0,2400.0,WEAP_FL_NONE,11)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_bd_asminigun",0.0,3000.0,WEAP_FL_NONE,16)); 
-        m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_mp5sil",0.0,2000.0,WEAP_FL_NONE,9)); //Opbt
-        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_dcp228",0.0,1500.0,WEAP_FL_NONE,9));// aomdc
-    }    
+        // AoM/AoMDC weapons
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_dcknife",0.0,100.0,WEAP_FL_MELEE|WEAP_FL_UNDERWATER,2));
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.7,"weapon_dcp228",0.0,1500.0,WEAP_FL_NONE,9));
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_clknife",0.0,100.0,WEAP_FL_MELEE|WEAP_FL_UNDERWATER,2));
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.7,"weapon_clberetta",0.0,1500.0,WEAP_FL_NONE,9));
+        // Other weapons
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_knife",0.0,100.0,WEAP_FL_MELEE|WEAP_FL_UNDERWATER,2)); //op4
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.5,"weapon_csglock18",0.0,3000.0,WEAP_FL_UNDERWATER,9)); //cs16
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_mp5sil",0.0,2000.0,WEAP_FL_NONE,9)); //opbt
+    }
 
     int numWeapons ()
     {
