@@ -3195,7 +3195,7 @@ class CBotUtilities
             else if ( m_fNoUtilCanDoTime < g_Engine.time )
             {
                 // ten seconds passed, still no util, suicide
-                bot.m_pPlayer.Killed(bot.m_pPlayer.pev, 0);
+                // bot.m_pPlayer.Killed(bot.m_pPlayer.pev, 0); //LCH:Do not suicide
                 m_fNoUtilCanDoTime = 0;
             }
         }

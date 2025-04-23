@@ -2395,7 +2395,7 @@ void te_playerattachment(CBasePlayer@ target, float vOffset=51.0f,
 		if ( m_fSuicideTime < g_Engine.time )
 		{
 			m_fNextShout = g_Engine.time + 3.0f; // prevents bot from shouting medic
-			m_pPlayer.Killed(m_pPlayer.pev, 0);
+			// m_pPlayer.Killed(m_pPlayer.pev, 0); //LCH:Do not suicide
 			m_fSuicideTime = g_Engine.time + 10.0f;
 			BotMessage("suicide() " + m_pPlayer.pev.netname + ": tasks: " + m_fNumTasks + ", failed: " + m_fNumTasksFailed);
 		}
