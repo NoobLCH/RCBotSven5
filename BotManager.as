@@ -1684,31 +1684,7 @@ return true;
 			if ( !IsEnemy(m_pEnemy.GetEntity() ) ) // is it still an enemy?
 				m_pEnemy = null; // clear the enemy
 		}
-		/*
-		KeyValueBuffer@ pInfoBuffer = g_EngineFuncs.GetInfoKeyBuffer( Player.edict() );
 		
-		pInfoBuffer.SetValue( "topcolor", Math.RandomLong( 0, 255 ) );
-		pInfoBuffer.SetValue( "bottomcolor", Math.RandomLong( 0, 255 ) );
-
-		pInfoBuffer.SetValue( "rate", 3500 );
-		pInfoBuffer.SetValue( "cl_updaterate", 20 );
-		pInfoBuffer.SetValue( "cl_lw", 1 );
-		pInfoBuffer.SetValue( "cl_lc", 1 );
-		pInfoBuffer.SetValue( "cl_dlmax", 128 );
-		pInfoBuffer.SetValue( "_vgui_menus", 0 );
-		pInfoBuffer.SetValue( "_ah", 0 );
-		pInfoBuffer.SetValue( "dm", 0 );
-		pInfoBuffer.SetValue( "tracker", 0 );
-		
-		if( Math.RandomLong( 0, 100 ) > 10 )
-			Player.pev.button |= IN_ATTACK;
-		else
-			Player.pev.button &= ~IN_ATTACK;
-			
-		for( uint uiIndex = 0; uiIndex < 3; ++uiIndex )
-		{
-			m_vecVelocity[ uiIndex ] = Math.RandomLong( -50, 50 );
-		}*/
 		DoTasks(); // do schedule/tasks 
 		DoVisibles(); // update visible list
 
@@ -2306,6 +2282,13 @@ void te_playerattachment(CBasePlayer@ target, float vOffset=51.0f,
 	void DoButtons ()
 	{
 		CBotWeapon@ pCurrentWeapon = m_pWeapons.getCurrentWeapon();
+		// LCH: 如果列表里面没有武器，构建一个假的武器信息，看能否让Bot使用未注册的武器开枪
+		if (pCurrentWeapon is null && m_pPlayer.m_hActiveItem.IsValid())
+		{
+			CBasePlayerWeapon@ pWeapon = cast<CBasePlayerWeapon@>(m_pPlayer.m_hActiveItem.GetEntity());
+			if (pWeapon !is null)
+				pCurrentWeapon = CBotWeapon(CBotWeaponInfo(0.9,pWeapon.pev.classname,0.0,2000.0,WEAP_FL_UNDERWATER,1));
+		}
 
 		if ( m_pBlocking.GetEntity() !is null )
 		{
