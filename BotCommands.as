@@ -172,7 +172,7 @@ void PluginInit()
 	@m_pBeliefMultiplier = CCVar("belief_mult",400,"belief cost multiplier", ConCommandFlag::AdminOnly);
 	@m_pWPAutoPathDist = CCVar("autopath_dist",512,"Distance to auto add paths to waypoints", ConCommandFlag::AdminOnly);
 	@m_pDisableUtil = CCVar("disable_util", 0, "Disable bot's utility function, debug only", ConCommandFlag::AdminOnly);
-	@m_pBotSuicide = CCVar("suicide",1,"Allow bots ability to suicide if they get stuck",ConCommandFlag::AdminOnly);
+	@m_pBotSuicide = CCVar("suicide",0,"Allow bots ability to suicide if they get stuck",ConCommandFlag::AdminOnly);
 	@m_pExperimental = CCVar("experimental",1,"Allow experimental features",ConCommandFlag::AdminOnly);
 
 	g_BotCam.Clear(false);

@@ -247,12 +247,13 @@ final class RCBot : BotManager::BaseBot
 			}
 			else if ( args[1] == "tp" ) // Hax: 让Bot直接传送到玩家的当前位置
 			{
+				bBotHeard = true;
 				//检测落点是否有东西阻挡
 				TraceResult tr;
 				Vector vecSrc = talker.pev.origin + (((talker.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero);
 				g_Utility.TraceHull(vecSrc, vecSrc + Vector(0, 0, 1), ignore_monsters, (m_pPlayer.pev.flags & FL_DUCKING != 0) ? head_hull : human_hull, m_pPlayer.edict(), tr);
 				if (tr.flFraction >= 1.0 && FNullEnt(tr.pHit) && tr.fAllSolid == 0 && tr.fStartSolid == 0) {
-					bBotHeard = true;
+					OK = true;
 					//记录点的玩家如果蹲下了而要传送的玩家没蹲下：需要坐标向上一点，不然站着的人传送过来会卡住
 					g_EntityFuncs.SetOrigin(m_pPlayer, vecSrc);
 					m_pPlayer.pev.angles.y = talker.pev.angles.y;
@@ -2317,7 +2318,7 @@ void te_playerattachment(CBasePlayer@ target, float vOffset=51.0f,
 		{
 			CBasePlayerWeapon@ pWeapon = cast<CBasePlayerWeapon@>(m_pPlayer.m_hActiveItem.GetEntity());
 			if (pWeapon !is null)
-				pCurrentWeapon = CBotWeapon(CBotWeaponInfo(0.9,pWeapon.pev.classname,0.0,2000.0,WEAP_FL_UNDERWATER,1));
+				@pCurrentWeapon = CBotWeapon(@CBotWeaponInfo(0.9,pWeapon.pev.classname,0.0,2000.0,WEAP_FL_UNDERWATER,1));
 		}
 
 		if ( m_pBlocking.GetEntity() !is null )
