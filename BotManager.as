@@ -250,7 +250,9 @@ final class RCBot : BotManager::BaseBot
 				bBotHeard = true;
 				//检测落点是否有东西阻挡
 				TraceResult tr;
-				Vector vecSrc = talker.pev.origin + (((talker.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero);
+				Vector vecAngle = Vector(0, talker.pev.angles.y, 0);
+				Math.MakeVectors(vecAngle);
+				Vector vecSrc = talker.pev.origin + (((talker.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) + g_Engine.v_forward * 36;
 				g_Utility.TraceHull(vecSrc, vecSrc + Vector(0, 0, 1), ignore_monsters, (m_pPlayer.pev.flags & FL_DUCKING != 0) ? head_hull : human_hull, m_pPlayer.edict(), tr);
 				if (tr.flFraction >= 1.0 && FNullEnt(tr.pHit) && tr.fAllSolid == 0 && tr.fStartSolid == 0) {
 					OK = true;
