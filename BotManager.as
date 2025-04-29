@@ -73,6 +73,8 @@ final class RCBot : BotManager::BaseBot
 	int m_iLastWaypointTo = 0;	
 	bool m_bLastPathFailed = false;
 
+	int m_iRespawnTP = 0; // BOT复活后传送的次数
+	Vector m_vRespawnTPOrigin; // BOT复活后传送的坐标
 
 	Vector m_vObjectiveOrigin;
 	bool m_bObjectiveOriginValid;
@@ -222,6 +224,43 @@ final class RCBot : BotManager::BaseBot
 		m_bObjectiveOriginValid = true;
 	}
 
+	bool checkTPNoBlock(Vector vecSrc)
+	{
+		bool result = false;
+		//检测落点是否有东西阻挡
+		TraceResult tr;
+		g_Utility.TraceHull(vecSrc, vecSrc + Vector(0, 0, 1), ignore_monsters, (m_pPlayer.pev.flags & FL_DUCKING != 0) ? head_hull : human_hull, m_pPlayer.edict(), tr);
+		if (tr.flFraction >= 1.0 && FNullEnt(tr.pHit) && tr.fAllSolid == 0 && tr.fStartSolid == 0)
+			result = true;
+		return result;
+	}
+
+	bool botTP(Vector vecSrc, bool checkBlock = false)
+	{
+		//检测落点是否有东西阻挡
+		if (checkBlock && !checkTPNoBlock(vecSrc))
+			return false;
+		g_EntityFuncs.SetOrigin(m_pPlayer, vecSrc);
+		m_pPlayer.pev.fixangle = FAM_FORCEVIEWANGLES;
+		NetworkMessage m(MSG_BROADCAST, NetworkMessages::SVC_TEMPENTITY, null);
+		m.WriteByte(TE_IMPLOSION);
+			m.WriteCoord(m_pPlayer.pev.origin.x);
+			m.WriteCoord(m_pPlayer.pev.origin.y);
+			m.WriteCoord(m_pPlayer.pev.origin.z);
+			m.WriteByte(64);
+			m.WriteByte(24);
+			m.WriteByte(5);
+		m.End();
+		NetworkMessage t(MSG_BROADCAST, NetworkMessages::SVC_TEMPENTITY, null);
+			t.WriteByte(TE_TELEPORT);
+			t.WriteCoord(m_pPlayer.pev.origin.x);
+			t.WriteCoord(m_pPlayer.pev.origin.y);
+			t.WriteCoord(m_pPlayer.pev.origin.z);
+		t.End();
+		g_SoundSystem.PlaySound(m_pPlayer.edict(), CHAN_STATIC, "items/r_item1.wav", 1.0f, 1.0f, 0, 100);
+		return true;
+	}
+
 	void ClientSay ( CBaseEntity@ talker, array<string> args )
 	{		
 		if ( args.length() > 1 )
@@ -247,36 +286,31 @@ final class RCBot : BotManager::BaseBot
 			}
 			else if ( args[1] == "tp" ) // Hax: 让Bot直接传送到玩家的当前位置
 			{
-				bBotHeard = true;
-				//检测落点是否有东西阻挡
-				TraceResult tr;
+				//记录点的玩家如果蹲下了而要传送的玩家没蹲下：需要坐标向上一点，不然站着的人传送过来会卡住；同时需要向前一点，5.26玩家自动挤开的逻辑烂了
 				Vector vecAngle = Vector(0, talker.pev.angles.y, 0);
 				Math.MakeVectors(vecAngle);
 				Vector vecSrc = talker.pev.origin + (((talker.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) + g_Engine.v_forward * 36;
-				g_Utility.TraceHull(vecSrc, vecSrc + Vector(0, 0, 1), ignore_monsters, (m_pPlayer.pev.flags & FL_DUCKING != 0) ? head_hull : human_hull, m_pPlayer.edict(), tr);
-				if (tr.flFraction >= 1.0 && FNullEnt(tr.pHit) && tr.fAllSolid == 0 && tr.fStartSolid == 0) {
-					OK = true;
-					//记录点的玩家如果蹲下了而要传送的玩家没蹲下：需要坐标向上一点，不然站着的人传送过来会卡住
-					g_EntityFuncs.SetOrigin(m_pPlayer, vecSrc);
-					m_pPlayer.pev.angles.y = talker.pev.angles.y;
-					m_pPlayer.pev.fixangle = FAM_FORCEVIEWANGLES;
-					NetworkMessage m(MSG_BROADCAST, NetworkMessages::SVC_TEMPENTITY, null);
-					m.WriteByte(TE_IMPLOSION);
-						m.WriteCoord(m_pPlayer.pev.origin.x);
-						m.WriteCoord(m_pPlayer.pev.origin.y);
-						m.WriteCoord(m_pPlayer.pev.origin.z);
-						m.WriteByte(64);
-						m.WriteByte(24);
-						m.WriteByte(5);
-					m.End();
-					NetworkMessage t(MSG_BROADCAST, NetworkMessages::SVC_TEMPENTITY, null);
-						t.WriteByte(TE_TELEPORT);
-						t.WriteCoord(m_pPlayer.pev.origin.x);
-						t.WriteCoord(m_pPlayer.pev.origin.y);
-						t.WriteCoord(m_pPlayer.pev.origin.z);
-					t.End();
-					g_SoundSystem.PlaySound(m_pPlayer.edict(), CHAN_STATIC, "items/r_item1.wav", 1.0f, 1.0f, 0, 100);
+				bool bCanTP = checkTPNoBlock(vecSrc);
+				if (bCanTP) {
+					m_vRespawnTPOrigin = vecSrc;
+					// 有第3个参数：设置bot复活传送的次数
+					if (args.length() > 2) {
+						m_iRespawnTP = atoi(args[2]);
+						if (m_iRespawnTP <= 0) {
+							bCanTP = false;
+							Say("Respawn TP stopped");
+						}
+						else
+							Say("Respawn TP for " + string(m_iRespawnTP) + " times");
+					}
+					// 执行TP
+					if (bCanTP) {
+						bBotHeard = true;
+						OK = botTP(m_vRespawnTPOrigin);
+					}
 				}
+				else
+					Say("NEGATIVE: LZ blocked");
 			}
 			else if ( args[1] == "wait")
 			{
@@ -1708,6 +1742,15 @@ return true;
 			return; // Dead , nothing else to do
 		}
 
+		// 复活传送
+		if (init && m_iRespawnTP > 0) {
+			m_iRespawnTP--;
+			if (botTP(m_vRespawnTPOrigin, true))
+				Say("Respawn TP: " + string(m_iRespawnTP) + "times left");
+			else
+				Say("Respawn TP failed: LZ blocked, " + string(m_iRespawnTP) + "times left");
+		}
+
 		m_iPrevHealthArmor = m_iCurrentHealthArmor; // keep track of how much armor we have
 
 		init = false; // we have already spawned
@@ -2710,6 +2753,15 @@ final class BotEnemiesVisible
 
 			if ( !bot.IsEnemy(temp.pEnemy.GetEntity()) )
 			{
+				toRemove.push_back(temp);
+				continue;
+			}
+
+			// 检查有队友是否挡在枪线上，如果是则视为无效目标
+			TraceResult tr;
+			g_Utility.TraceHull(bot.m_pPlayer.pev.origin, UTIL_EntityOrigin(temp.pEnemy.GetEntity()), dont_ignore_monsters, head_hull, bot.m_pPlayer.edict(), tr);
+			CBaseEntity@ pHit = g_EntityFuncs.Instance(tr.pHit);
+			if (pHit !is null && bot.m_pPlayer.IRelationship(pHit) == R_AL && (pHit.IsPlayer() || pHit.IsMonster())) {
 				toRemove.push_back(temp);
 				continue;
 			}
