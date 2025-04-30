@@ -73,7 +73,7 @@ final class RCBot : BotManager::BaseBot
 	int m_iLastWaypointTo = 0;	
 	bool m_bLastPathFailed = false;
 
-	int m_iRespawnTP = 0; // BOT复活后传送的次数
+	bool m_bRespawnTP = false; // BOT复活后传送的次数
 	Vector m_vRespawnTPOrigin; // BOT复活后传送的坐标
 
 	Vector m_vObjectiveOrigin;
@@ -292,22 +292,22 @@ final class RCBot : BotManager::BaseBot
 				Vector vecSrc = talker.pev.origin + (((talker.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) + g_Engine.v_forward * 36;
 				bool bCanTP = checkTPNoBlock(vecSrc);
 				if (bCanTP) {
+					bBotHeard = true;
 					m_vRespawnTPOrigin = vecSrc;
 					// 有第3个参数：设置bot复活传送的次数
 					if (args.length() > 2) {
-						m_iRespawnTP = atoi(args[2]);
-						if (m_iRespawnTP <= 0) {
+						bBotHeard = false;
+						m_bRespawnTP = atoi(args[2]) > 0;
+						if (!m_bRespawnTP) {
 							bCanTP = false;
-							Say("Respawn TP stopped");
+							Say("Respawn TP Disabled");
 						}
 						else
-							Say("Respawn TP for " + string(m_iRespawnTP) + " times");
+							Say("Respawn TP Enabled");
 					}
 					// 执行TP
-					if (bCanTP) {
-						bBotHeard = true;
+					if (bCanTP)
 						OK = botTP(m_vRespawnTPOrigin);
-					}
 				}
 				else
 					Say("NEGATIVE: LZ blocked");
@@ -1743,12 +1743,11 @@ return true;
 		}
 
 		// 复活传送
-		if (init && m_iRespawnTP > 0) {
-			m_iRespawnTP--;
+		if (init && m_bRespawnTP) {
 			if (botTP(m_vRespawnTPOrigin, true))
-				Say("Respawn TP: " + string(m_iRespawnTP) + "times left");
+				Say("Respawn TP success");
 			else
-				Say("Respawn TP failed: LZ blocked, " + string(m_iRespawnTP) + "times left");
+				Say("Respawn TP failed: LZ blocked");
 		}
 
 		m_iPrevHealthArmor = m_iCurrentHealthArmor; // keep track of how much armor we have
