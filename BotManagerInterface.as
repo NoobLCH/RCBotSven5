@@ -230,7 +230,6 @@ Vector vCamOrigin;
 	float m_fNextChangeBotTime;
 	float m_fNextChangeState;
 	bool m_bTriedToSpawn;
-	//float m_fThinkTime;
 	TraceResult tr;
 	int m_iPositionSet;
 	Vector vBotOrigin;
@@ -550,11 +549,34 @@ namespace BotManager
 		{
 			if( m_bInitialized )
 			{
+				// LCH 25/5/9 RemoveSchedule
+				RemoveSchedule();
+
 				g_Hooks.RemoveHook( Hooks::Game::MapChange, MapChangeHook( this.MapChange ) );
 				g_Hooks.RemoveHook( Hooks::Player::ClientDisconnect, ClientDisconnectHook( this.ClientDisconnect ) );
 				g_Hooks.RemoveHook( Hooks::Player::ClientSay, ClientSayHook( this.ClientSay ) );
 				g_Hooks.RemoveHook( Hooks::Player::PlayerTakeDamage, PlayerTakeDamageHook( this.PlayerTakeDamage) );
 				g_Hooks.RemoveHook( Hooks::Player::PlayerKilled, PlayerKilledHook( this.PlayerKilled) );
+			}
+		}
+
+		void EnableSchedule()
+		{
+			if (m_pScheduledFunction is null || m_pScheduledFunction.HasBeenRemoved())
+				@m_pScheduledFunction = g_Scheduler.SetInterval( @this, "Think", 0.1f );
+			if (m_pWaypointDisplay is null || m_pWaypointDisplay.HasBeenRemoved())
+				@m_pWaypointDisplay = g_Scheduler.SetInterval(@this, "WaypointDisplay", 1);
+		}
+
+		void RemoveSchedule()
+		{
+			if(m_pScheduledFunction !is null){
+				g_Scheduler.RemoveTimer(m_pScheduledFunction);
+				@m_pScheduledFunction = null;
+			}
+			if(m_pWaypointDisplay !is null){
+				g_Scheduler.RemoveTimer(m_pWaypointDisplay);
+				@m_pWaypointDisplay = null;
 			}
 		}
 		
@@ -712,8 +734,6 @@ namespace BotManager
 
 		void PluginInit()
 		{
-			float ThinkTime = 0.1;
-
 			if( m_bInitialized )
 				return;
 			
@@ -727,8 +747,7 @@ namespace BotManager
 			g_Hooks.RegisterHook( Hooks::Player::PlayerKilled, PlayerKilledHook ( this.PlayerKilled) );
 
 			//g_Hooks.RegisterHook( Hooks::CEntityFuncs, DispatchKeyValueHook(this.DispatchKeyValue) );
-			@m_pScheduledFunction = g_Scheduler.SetInterval( @this, "Think", ThinkTime );
-			@m_pWaypointDisplay = g_Scheduler.SetInterval(@this, "WaypointDisplay", 1);
+			EnableSchedule();
 
 			ReadConfig( "scripts/plugins/BotManager/config/config.ini" );
 			ReadMapConfig();
@@ -753,6 +772,11 @@ namespace BotManager
 
 			g_WaypointsLoaded = false;
 
+		}
+
+		void MapStart()
+		{
+			EnableSchedule();
 		}
 		
 		HookReturnCode PlayerSpawn( CBasePlayer@ pPlayer )
@@ -821,6 +845,9 @@ namespace BotManager
 
 			ReadConfig( "scripts/plugins/BotManager/config/config.ini" );
 			ReadMapConfig();
+
+			// LCH 25/5/9 RemoveSchedule
+			RemoveSchedule();
 
 			return HOOK_CONTINUE;
 		}
