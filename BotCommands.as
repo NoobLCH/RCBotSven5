@@ -109,6 +109,11 @@ void MapInit()
 	// need this for waypoint sounds
 	g_Waypoints.precacheSounds();
 }
+// LCH 25/5/9 定时器每次换图后再打开?
+void MapStart()
+{
+	g_BotManager.MapStart();
+}
 // initialise all CVARS and commands and plugin info
 void PluginInit()
 {
