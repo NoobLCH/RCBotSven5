@@ -326,7 +326,7 @@ final class RCBot : BotManager::BaseBot
 				else
 					Say("NEGATIVE: LZ blocked");
 			}
-			else if ( args[1] == "forcemove" ) // 直接让BOT向玩家准星指向的位置移动，不做路点检查
+			else if ( args[1] == "fm" ) // 直接让BOT向玩家准星指向的位置移动，不做路点检查
 			{
 				bBotHeard = true;
 				// 获取玩家准星指向的位置
@@ -339,7 +339,7 @@ final class RCBot : BotManager::BaseBot
 				sched.addTask(CBotForceMoveTask(vTarget));
 				OK = true;
 			}
-			else if ( args[1] == "forcefollow" ) // 直接让BOT跟随玩家身后，不做路点检查
+			else if ( args[1] == "ff" ) // 直接让BOT跟随玩家身后，不做路点检查
 			{
 				bBotHeard = true;
 				RCBotSchedule@ sched = SCHED_CREATE_NEW();

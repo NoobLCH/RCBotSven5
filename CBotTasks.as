@@ -3232,9 +3232,7 @@ class CBotForceMoveTask : RCBotTask
 class CBotForceFollowTask : RCBotTask
 {
     EHandle m_pFollow;
-    float m_fNextMoveUpdate = 0; // 移动更新间隔计时器
     Vector m_vLastFollowPos; // 上次跟随时玩家的位置
-    Vector m_vCachedBehind; // 缓存的玩家后方位置
 
     string DebugString ()
     {
@@ -3258,46 +3256,33 @@ class CBotForceFollowTask : RCBotTask
 
         // BOT正在攻击时暂停跟随，只看向敌人
         CBaseEntity@ pEnemy = bot.m_pEnemy.GetEntity();
-        if ( pEnemy !is null )
-        {
-            bot.setLookAt(bot.getAimVector(pEnemy), PRIORITY_ATTACK);
-            return;
-        }
-
-        bot.setLookAt(pFollow.pev.origin);
+        if ( pEnemy is null )
+            bot.setLookAt(pFollow.pev.origin);
 
         // 玩家移动距离较小时，BOT不需要重新跟随
         if ( m_vLastFollowPos != Vector(0,0,0) )
         {
             float fPlayerMoveDist = (pFollow.pev.origin - m_vLastFollowPos).Length();
 
-            if ( fPlayerMoveDist < 80 )
+            if ( fPlayerMoveDist <= 96 )
             {
                 bot.StopMoving();
                 return;
             }
         }
 
-        // BOT已到达缓存的后方位置附近
-        if ( bot.distanceFrom(m_vCachedBehind) <= 32 )
+        // 计算玩家位置
+        Vector vecPlayer = pFollow.pev.origin + (((pFollow.pev.flags & FL_DUCKING != 0) && (bot.m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero);
+
+        // BOT已到达玩家附近
+        if ( bot.distanceFrom(vecPlayer) <= 80 )
         {
             bot.StopMoving();
             m_vLastFollowPos = pFollow.pev.origin;
             return;
         }
 
-        // 每秒更新一次移动目标和后方位置计算
-        if ( g_Engine.time >= m_fNextMoveUpdate )
-        {
-            m_fNextMoveUpdate = g_Engine.time + 1.0f;
-
-            // 计算玩家正后方位置（Math.MakeVectors开销较大，仅每秒执行一次）
-            Vector vecAngle = Vector(0, pFollow.pev.angles.y, 0);
-            Math.MakeVectors(vecAngle);
-            m_vCachedBehind = pFollow.pev.origin + (((pFollow.pev.flags & FL_DUCKING != 0) && (bot.m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) - g_Engine.v_forward * 36;
-
-            bot.setMove(m_vCachedBehind);
-            m_vLastFollowPos = pFollow.pev.origin;
-        }
+        // 每秒更新一次移动目标和玩家位置计算
+        bot.setMove(vecPlayer);
     }
 }
