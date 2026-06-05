@@ -2431,13 +2431,6 @@ void te_playerattachment(CBasePlayer@ target, float vOffset=51.0f,
 	void DoButtons ()
 	{
 		CBotWeapon@ pCurrentWeapon = m_pWeapons.getCurrentWeapon();
-		// LCH: 如果列表里面没有武器，构建一个假的武器信息，看能否让Bot使用未注册的武器开枪
-		if (pCurrentWeapon is null && m_pPlayer.m_hActiveItem.IsValid())
-		{
-			CBasePlayerWeapon@ pWeapon = cast<CBasePlayerWeapon@>(m_pPlayer.m_hActiveItem.GetEntity());
-			if (pWeapon !is null)
-				@pCurrentWeapon = CBotWeapon(@CBotWeaponInfo(0.9,pWeapon.pev.classname,0.0,2000.0,WEAP_FL_UNDERWATER,1));
-		}
 
 		if ( m_pBlocking.GetEntity() !is null )
 		{

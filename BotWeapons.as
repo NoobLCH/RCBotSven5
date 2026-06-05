@@ -407,6 +407,7 @@ class CBotWeapons
 {
     array<CBotWeapon@> m_pWeapons;
     CBotWeapon@ m_pCurrentWeapon;
+    float m_fNextInventoryScan = 0; // 未列表武器扫描冷却计时器
 
     CBotWeapons ()
     {
@@ -414,7 +415,7 @@ class CBotWeapons
         {
             CBotWeaponInfo@ weapon = g_WeaponInfo.getWeapon(i);
 
-            m_pWeapons.insertLast(CBotWeapon(weapon));                        
+            m_pWeapons.insertLast(CBotWeapon(weapon));
         }
 
         @m_pCurrentWeapon = null;
@@ -494,15 +495,57 @@ class CBotWeapons
         for ( uint i = 0; i < m_pWeapons.length(); i ++ )
         {
             CBotWeapon@ weapon = m_pWeapons[i];
-            CBasePlayerItem@ item = bot.m_pPlayer.HasNamedPlayerItem(weapon.GetClassname()); 
+            CBasePlayerItem@ item = bot.m_pPlayer.HasNamedPlayerItem(weapon.GetClassname());
             CBasePlayerWeapon@ pWeaponEntity = null;
 
             if ( item !is null )
             {
-                @pWeaponEntity =  item.GetWeaponPtr();                    
+                @pWeaponEntity =  item.GetWeaponPtr();
             }
 
-            weapon.setWeaponEntity(pWeaponEntity);         
+            weapon.setWeaponEntity(pWeaponEntity);
+        }
+
+        // 遍历BOT实际持有的所有武器，为不在预定义列表中的武器创建默认条目
+        // 每5秒扫描一次，避免每帧遍历产生性能问题
+        if ( g_Engine.time >= m_fNextInventoryScan )
+        {
+            m_fNextInventoryScan = g_Engine.time + 5.0f;
+            for ( uint iSlot = 0; iSlot < MAX_ITEM_TYPES; iSlot++ )
+            {
+                CBasePlayerItem@ pItem = bot.m_pPlayer.m_rgpPlayerItems(iSlot);
+                while ( pItem !is null )
+                {
+                    CBasePlayerWeapon@ pWeapon = pItem.GetWeaponPtr();
+                    if ( pWeapon !is null )
+                    {
+                        string classname = pWeapon.pev.classname;
+                        CBotWeapon@ existing = findBotWeapon(classname);
+                        if ( existing is null )
+                        {
+                            // 武器不在预定义列表中，创建默认参数
+                            int iFlags = WEAP_FL_NONE;
+                            int iPriority = 2;
+                            float fMinDist = 0.0f;
+                            float fMaxDist = 2000.0f;
+
+                            // 不消耗弹药的都视为近战武器
+                            if ( pWeapon.m_iPrimaryAmmoType == -1 && pWeapon.m_iSecondaryAmmoType == -1 )
+                            {
+                                iFlags = WEAP_FL_MELEE | WEAP_FL_UNDERWATER;
+                                iPriority = 0;
+                                fMaxDist = 100.0f;
+                            }
+
+                            CBotWeaponInfo@ info = CBotWeaponInfo(0.5, classname, fMinDist, fMaxDist, iFlags, iPriority);
+                            CBotWeapon@ newWeapon = CBotWeapon(info);
+                            newWeapon.setWeaponEntity(pWeapon);
+                            m_pWeapons.insertLast(newWeapon);
+                        }
+                    }
+                    @pItem = cast<CBasePlayerItem@>(pItem.m_hNextItem.GetEntity());
+                }
+            }
         }
 
          @m_pCurrentWeapon = findCurrentWeapon(bot);
