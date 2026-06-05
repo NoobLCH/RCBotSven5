@@ -280,6 +280,9 @@ namespace BotManager
 		bool m_bCeaseFire = false;
 
 		bool m_bIsAvoiding = false;
+
+		// 托管模式：真实玩家被BOT AI控制
+		bool m_bPossessed = false;
 		Vector m_vAvoidVector;
 
 		// for reference only!!!
@@ -652,15 +655,47 @@ namespace BotManager
 		HookReturnCode ClientSay ( SayParameters@ param )
 		{
 			CBasePlayer@ talker = param.GetPlayer();
-			
+
 			array<string> args = param.GetCommand().Split( " " );
+
+			if ( talker is null )
+				return HOOK_CONTINUE;
+
+			// 托管模式命令：!leave 进入/退出托管，!back 退出托管
+			if ( args[0] == "!leave" )
+			{
+				BaseBot@ existingBot = FindBot(talker);
+				if ( existingBot !is null && existingBot.m_bPossessed )
+				{
+					// 已在托管中，再输入一次取消托管
+					UnpossessPlayer(talker);
+					g_PlayerFuncs.SayText(talker, "托管模式已关闭\n");
+				}
+				else if ( existingBot is null )
+				{
+					// 进入托管
+					BaseBot@ pBot = PossessPlayer(talker);
+					if ( pBot !is null )
+						g_PlayerFuncs.SayText(talker, "托管模式已开启，输入 !back 或 !leave 退出\n");
+					else
+						g_PlayerFuncs.SayText(talker, "托管模式开启失败\n");
+				}
+				return HOOK_HANDLED;
+			}
+			else if ( args[0] == "!back" )
+			{
+				BaseBot@ existingBot = FindBot(talker);
+				if ( existingBot !is null && existingBot.m_bPossessed )
+				{
+					UnpossessPlayer(talker);
+					g_PlayerFuncs.SayText(talker, "托管模式已关闭\n");
+				}
+				return HOOK_HANDLED;
+			}
 
 			//SayMessage(ListenPlayer(),"YOU TYPED " + args[0] + " | " + args[1]);
 
 			CBasePlayer@ talking_to = UTIL_FindPlayer(args[0],talker,true);
-
-			if ( talker is null )
-				return HOOK_CONTINUE;
 
 			if ( talking_to !is null )
 			{
@@ -794,26 +829,30 @@ namespace BotManager
 		{
 			if( ( pPlayer.pev.flags & FL_FAKECLIENT ) != 0 )
 				RemoveBot( pPlayer, false );
-			
+			else
+			{
+				// 真实玩家断线时，如果是托管状态则取消托管
+				BaseBot@ pBot = FindBot( pPlayer );
+				if( pBot !is null && pBot.m_bPossessed )
+					UnpossessPlayer( pPlayer );
+			}
+
 			return HOOK_CONTINUE;
 		}
 
 		HookReturnCode PlayerKilled ( CBasePlayer@ pPlayer, CBaseEntity@ pAttacker, int iGib )
 		{
-			if( ( pPlayer.pev.flags & FL_FAKECLIENT ) != 0 )		
+			BaseBot@ pBot = FindBot( pPlayer );
+
+			if( pBot !is null )
 			{
-				BaseBot@ pBot = FindBot( pPlayer );
+				Vector vEnemyOrigin = Vector(0,0,0);
+				
+				if ( pAttacker !is null )
+					vEnemyOrigin = UTIL_EntityOrigin(pAttacker);
 
-				if( pBot !is null )
-				{
-					Vector vEnemyOrigin = Vector(0,0,0);
-					
-					if ( pAttacker !is null )
-						vEnemyOrigin = UTIL_EntityOrigin(pAttacker);
-
-					pBot.m_fBelief.danger(pBot.m_iCurrentWaypoint,vEnemyOrigin,iGib>0?25:15);
-					pBot.m_fBelief.danger(pBot.m_iGoalWaypoint,Vector(0,0,0), iGib>0?25:15 );
-				}
+				pBot.m_fBelief.danger(pBot.m_iCurrentWaypoint,vEnemyOrigin,iGib>0?25:15);
+				pBot.m_fBelief.danger(pBot.m_iGoalWaypoint,Vector(0,0,0), iGib>0?25:15 );
 			}
 
 			return HOOK_CONTINUE;
@@ -1003,6 +1042,57 @@ namespace BotManager
 			}
 		}
 
+		// 托管模式：为真实玩家创建BOT AI控制器
+		BaseBot@ PossessPlayer( CBasePlayer@ pPlayer )
+		{
+			if ( pPlayer is null ) return null;
+			// 已在Bot列表中（可能是正式Bot或已托管）
+			if ( FindBot(pPlayer) !is null ) return null;
+			// 不对假客户端托管（它们本身就是Bot）
+			if ( (pPlayer.pev.flags & FL_FAKECLIENT) != 0 ) return null;
+
+			BaseBot@ pBot = CreateBot( pPlayer );
+			if ( pBot !is null )
+			{
+				pBot.m_bPossessed = true;
+				// 托管玩家不使用Profile
+				m_Bots.insertLast( pBot );
+				pBot.Spawn();
+				g_Game.AlertMessage( at_console, "BotManager: Player %1 entered possession mode\n", pPlayer.pev.netname );
+				return pBot;
+			}
+			return null;
+		}
+
+		// 退出托管模式：移除BOT AI控制器但不踢出玩家
+		void UnpossessPlayer( CBasePlayer@ pPlayer )
+		{
+			if ( pPlayer is null ) return;
+			BaseBot@ pBot = FindBot( pPlayer );
+			if ( pBot !is null && pBot.m_bPossessed )
+			{
+				int iIndex = m_Bots.findByRef( @pBot );
+				if ( iIndex != -1 )
+				{
+					m_Bots.removeAt( uint( iIndex ) );
+					pBot.Disconnected();
+					g_Game.AlertMessage( at_console, "BotManager: Player %1 left possession mode\n", pPlayer.pev.netname );
+				}
+			}
+		}
+
+		// 获取正式Bot数量（不含托管玩家），用于配额管理
+		uint GetRealBotCount() const
+		{
+			uint count = 0;
+			for ( uint i = 0; i < m_Bots.length(); i++ )
+			{
+				if ( !m_Bots[i].m_bPossessed )
+					count++;
+			}
+			return count;
+		}
+
 		float m_NextDebugMessageTime = 0;
 		
 		void Think()
@@ -1015,7 +1105,9 @@ namespace BotManager
 				pBot.RunPlayerMove();
 			}
 
-			if ( m_Bots.length() < m_iBotQuota )
+			uint realBotCount = GetRealBotCount();
+
+			if ( realBotCount < m_iBotQuota )
 			{
 				if ( m_fAddBotTime < g_Engine.time )
 				{
@@ -1024,7 +1116,7 @@ namespace BotManager
 					m_fAddBotTime = g_Engine.time + 5.0f;
 				}
 			}
-			else if ( m_Bots.length() > m_iBotQuota )
+			else if ( realBotCount > m_iBotQuota )
 			{
 				if ( m_fAddBotTime < g_Engine.time )
 				{
