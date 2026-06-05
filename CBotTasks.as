@@ -3203,3 +3203,65 @@ class CBotUtilities
         return null;
     }
 }
+
+// forcemove: 直接让BOT向目标位置移动，不做路点检查
+class CBotForceMoveTask : RCBotTask
+{
+    Vector m_vOrigin;
+    string DebugString ()
+    {
+        return "CBotForceMoveTask";
+    }
+    CBotForceMoveTask ( Vector vOrigin )
+    {
+        m_vOrigin = vOrigin;
+        setTimeout(60.0f);
+    }
+
+    void execute ( RCBot@ bot )
+    {
+        bot.setMove(m_vOrigin);
+        bot.setLookAt(m_vOrigin);
+
+        if ( bot.distanceFrom(m_vOrigin) < 64 )
+            Complete();
+    }
+}
+
+// forcefollow: 直接让BOT跟随玩家身后，不做路点检查
+class CBotForceFollowTask : RCBotTask
+{
+    EHandle m_pFollow;
+    string DebugString ()
+    {
+        return "CBotForceFollowTask";
+    }
+    CBotForceFollowTask ( CBaseEntity@ pFollow )
+    {
+        m_pFollow = pFollow;
+        setTimeout(3600.0f);
+    }
+
+    void execute ( RCBot@ bot )
+    {
+        CBaseEntity@ pFollow = m_pFollow.GetEntity();
+
+        if ( pFollow is null )
+        {
+            Failed();
+            return;
+        }
+
+        // 计算玩家正后方位置
+        Vector vecAngle = Vector(0, pFollow.pev.angles.y, 0);
+        Math.MakeVectors(vecAngle);
+        Vector vBehind = pFollow.pev.origin + (((pFollow.pev.flags & FL_DUCKING != 0) && (bot.m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) - g_Engine.v_forward * 36;
+
+        bot.setLookAt(pFollow.pev.origin);
+
+        if ( bot.distanceFrom(vBehind) > 32 )
+            bot.setMove(vBehind);
+        else
+            bot.StopMoving();
+    }
+}

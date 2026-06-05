@@ -73,7 +73,9 @@ final class RCBot : BotManager::BaseBot
 	int m_iLastWaypointTo = 0;	
 	bool m_bLastPathFailed = false;
 
-	bool m_bRespawnTP = false; // BOT复活后传送的次数
+	int m_iRespawnTPMode = 0; // 0=off, 1=static position(front), 2=behind player
+	EHandle m_hRespawnTPPlayer; // player reference for mode 2
+	float m_fNextRespawnTPRetry = 0; // retry timer for blocked TP
 	Vector m_vRespawnTPOrigin; // BOT复活后传送的坐标
 
 	Vector m_vObjectiveOrigin;
@@ -294,16 +296,28 @@ final class RCBot : BotManager::BaseBot
 				if (bCanTP) {
 					bBotHeard = true;
 					m_vRespawnTPOrigin = vecSrc;
-					// 有第3个参数：设置bot复活传送的次数
+					// 有第3个参数：大于0则开启复活时传送
 					if (args.length() > 2) {
 						bBotHeard = false;
-						m_bRespawnTP = atoi(args[2]) > 0;
-						if (!m_bRespawnTP) {
+						int iMode = atoi(args[2]);
+						if (iMode <= 0) {
+							m_iRespawnTPMode = 0;
+							m_fNextRespawnTPRetry = 0;
 							bCanTP = false;
 							Say("Respawn TP Disabled");
 						}
-						else
-							Say("Respawn TP Enabled");
+						else if (iMode == 1) {
+							m_iRespawnTPMode = 1;
+							m_vRespawnTPOrigin = vecSrc;
+							m_fNextRespawnTPRetry = 0;
+							Say("Respawn TP Enabled (Static)");
+						}
+						else if (iMode >= 2) {
+							m_iRespawnTPMode = 2;
+							m_hRespawnTPPlayer = talker;
+							m_fNextRespawnTPRetry = 0;
+							Say("Respawn TP Enabled (Behind Player)");
+						}
 					}
 					// 执行TP
 					if (bCanTP)
@@ -311,6 +325,26 @@ final class RCBot : BotManager::BaseBot
 				}
 				else
 					Say("NEGATIVE: LZ blocked");
+			}
+			else if ( args[1] == "forcemove" ) // 直接让BOT向玩家准星指向的位置移动，不做路点检查
+			{
+				bBotHeard = true;
+				// 获取玩家准星指向的位置
+				g_EngineFuncs.MakeVectors(talker.pev.v_angle);
+				TraceResult tr;
+				g_Utility.TraceLine(talker.EyePosition(), talker.EyePosition() + g_Engine.v_forward * 2048.0f, dont_ignore_monsters, dont_ignore_glass, talker.edict(), tr);
+				Vector vTarget = tr.vecEndPos;
+
+				RCBotSchedule@ sched = SCHED_CREATE_NEW();
+				sched.addTask(CBotForceMoveTask(vTarget));
+				OK = true;
+			}
+			else if ( args[1] == "forcefollow" ) // 直接让BOT跟随玩家身后，不做路点检查
+			{
+				bBotHeard = true;
+				RCBotSchedule@ sched = SCHED_CREATE_NEW();
+				sched.addTask(CBotForceFollowTask(talker));
+				OK = true;
 			}
 			else if ( args[1] == "wait")
 			{
@@ -1743,11 +1777,51 @@ return true;
 		}
 
 		// 复活传送
-		if (init && m_bRespawnTP) {
-			if (botTP(m_vRespawnTPOrigin, true))
-				Say("Respawn TP success");
-			else
-				Say("Respawn TP failed: LZ blocked");
+		if (m_iRespawnTPMode > 0) {
+			bool bShouldTryTP = false;
+
+			if (init) {
+				bShouldTryTP = true;
+			}
+			else if (m_fNextRespawnTPRetry > 0 && g_Engine.time >= m_fNextRespawnTPRetry) {
+				bShouldTryTP = true;
+			}
+
+			if (bShouldTryTP) {
+				Vector vecSrc;
+				bool bCanCalculate = true;
+
+				if (m_iRespawnTPMode == 1) {
+					vecSrc = m_vRespawnTPOrigin;
+				}
+				else if (m_iRespawnTPMode == 2) {
+					CBaseEntity@ pPlayer = m_hRespawnTPPlayer.GetEntity();
+					if (pPlayer !is null) {
+						Vector vecAngle = Vector(0, pPlayer.pev.angles.y, 0);
+						Math.MakeVectors(vecAngle);
+						vecSrc = pPlayer.pev.origin + (((pPlayer.pev.flags & FL_DUCKING != 0) && (m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero) - g_Engine.v_forward * 36;
+					}
+					else
+						bCanCalculate = false;
+				}
+
+				if (bCanCalculate) {
+					if (botTP(vecSrc, true)) {
+						Say("Respawn TP success");
+						m_fNextRespawnTPRetry = 0;
+					}
+					else {
+						if (init)
+							Say("Respawn TP failed: LZ blocked, retrying...");
+						m_fNextRespawnTPRetry = g_Engine.time + 5.0f;
+					}
+				}
+				else {
+					Say("Respawn TP failed: Player not found");
+					m_iRespawnTPMode = 0;
+					m_fNextRespawnTPRetry = 0;
+				}
+			}
 		}
 
 		m_iPrevHealthArmor = m_iCurrentHealthArmor; // keep track of how much armor we have
