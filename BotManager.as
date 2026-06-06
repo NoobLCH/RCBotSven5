@@ -336,6 +336,7 @@ final class RCBot : BotManager::BaseBot
 				Vector vTarget = tr.vecEndPos;
 
 				RCBotSchedule@ sched = SCHED_CREATE_NEW();
+				sched.m_bUserCommand = true;
 				sched.addTask(CBotForceMoveTask(vTarget));
 				OK = true;
 			}
@@ -343,6 +344,7 @@ final class RCBot : BotManager::BaseBot
 			{
 				bBotHeard = true;
 				RCBotSchedule@ sched = SCHED_CREATE_NEW();
+				sched.m_bUserCommand = true;
 				sched.addTask(CBotForceFollowTask(talker));
 				OK = true;
 			}
@@ -799,7 +801,7 @@ final class RCBot : BotManager::BaseBot
 	bool IsEnemy ( CBaseEntity@ entity, bool bCheckWeapons = true )
 	{
 		string szClassname;
-		
+
 		if ( m_pDontShoot.GetBool() )
 			return false;
 
@@ -1629,19 +1631,25 @@ return true;
 	{
 		if ( m_fNextTakeCover < g_Engine.time )
 		{
+			// 不覆盖用户主动发起的调度(如forcefollow)
+			if ( m_pCurrentSchedule !is null && m_pCurrentSchedule.m_bUserCommand )
+				return;
 			@m_pCurrentSchedule = CBotTaskFindCoverSchedule(this,UTIL_GrenadeEndPoint(pGrenade));
 			m_fNextTakeCover = g_Engine.time + Math.RandomFloat(6.0,12.0);
 			ShoutTakeCover();
-		}			
+		}
 	}
 
 	void TakeCover ( Vector vOrigin )
 	{
 		if ( m_fNextTakeCover < g_Engine.time )
 		{
+			// 不覆盖用户主动发起的调度(如forcefollow)
+			if ( m_pCurrentSchedule !is null && m_pCurrentSchedule.m_bUserCommand )
+				return;
 			@m_pCurrentSchedule = CBotTaskFindCoverSchedule(this,vOrigin);
 			m_fNextTakeCover = g_Engine.time + Math.RandomFloat(6.0,12.0);
-		}			
+		}
 	}
 
 	void Say (string text)
@@ -1655,7 +1663,7 @@ return true;
 	void hurt ( DamageInfo@ damageInfo )
 	{
 		CBaseEntity@ attacker = damageInfo.pAttacker;
-		
+
 		if ( attacker !is null )
 		{
 			Vector vAttacker = UTIL_EntityOrigin(attacker);
@@ -1666,9 +1674,13 @@ return true;
 
 			if ( isEntityVisible(attacker) )
 			{
+				// 将可见攻击者添加到敌人列表，确保BOT能还手
+				if ( IsEnemy(attacker, false) )
+					m_pEnemiesVisible.newEnemy(attacker);
+
 				TakeCover(vAttacker);
 				m_fLastHurt = 0.0f;
-			
+
 				//BotMessage("Take Cover!!!");
 			}
 			else
@@ -1679,7 +1691,7 @@ return true;
 			}
 
 			m_fBelief.danger(m_iCurrentWaypoint,vAttacker,10);
-			//UTIL_DebugMsg(m_pPlayer,"Danger added to current waypoint",DEBUG_BELIEF);			
+			//UTIL_DebugMsg(m_pPlayer,"Danger added to current waypoint",DEBUG_BELIEF);
 		}
 	}
 

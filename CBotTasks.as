@@ -70,6 +70,7 @@ class RCBotSchedule
 	array<RCBotTask@> m_pTasks;
     uint m_iCurrentTaskIndex;
     float m_fUtility = 0.0f;
+    bool m_bUserCommand = false; // 用户主动发起的调度(如ff/fm)，TakeCover不应覆盖
 
     RCBotSchedule()
     {
@@ -3254,7 +3255,7 @@ class CBotForceFollowTask : RCBotTask
             return;
         }
 
-        // BOT正在攻击时暂停跟随，只看向敌人
+        // 战斗时仍继续跟随玩家，只看向敌人
         CBaseEntity@ pEnemy = bot.m_pEnemy.GetEntity();
         if ( pEnemy is null )
             bot.setLookAt(pFollow.pev.origin);
@@ -3266,7 +3267,7 @@ class CBotForceFollowTask : RCBotTask
 
             if ( fPlayerMoveDist <= 96 )
             {
-                bot.StopMoving();
+                // bot.StopMoving();
                 return;
             }
         }
@@ -3275,14 +3276,14 @@ class CBotForceFollowTask : RCBotTask
         Vector vecPlayer = pFollow.pev.origin + (((pFollow.pev.flags & FL_DUCKING != 0) && (bot.m_pPlayer.pev.flags & FL_DUCKING == 0)) ? Vector(0,0,18) : g_vecZero);
 
         // BOT已到达玩家附近
-        if ( bot.distanceFrom(vecPlayer) <= 80 )
+        if ( bot.distanceFrom(vecPlayer) <= 96 )
         {
-            bot.StopMoving();
+            // bot.StopMoving();
             m_vLastFollowPos = pFollow.pev.origin;
             return;
         }
 
-        // 每秒更新一次移动目标和玩家位置计算
+        // 每帧设置移动目标
         bot.setMove(vecPlayer);
     }
 }

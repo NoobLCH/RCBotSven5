@@ -301,7 +301,11 @@ class CBotWeapon
 
         int index = weap.PrimaryAmmoIndex();
 
-        return (index >= 0) && ((weap.m_iClip + player.m_rgAmmo(index)) == 0);
+        if ( index < 0 ) return false; // 无弹药类型的武器(如近战)不算缺弹
+
+        int clip = (weap.m_iClip < 0) ? 0 : weap.m_iClip; // m_iClip=-1表示无弹夹，视为0
+
+        return (clip + player.m_rgAmmo(index)) == 0;
     }
 
     int getMaxPrimaryAmmo ()
@@ -328,11 +332,14 @@ class CBotWeapon
 
         if ( weap is null )
             return 0;
-        
+
         int index = weap.PrimaryAmmoIndex();
 
         if ( index >= 0 )
-            return bot.m_pPlayer.m_rgAmmo(index) + weap.m_iClip;
+        {
+            int clip = (weap.m_iClip < 0) ? 0 : weap.m_iClip; // m_iClip=-1表示无弹夹，视为0
+            return bot.m_pPlayer.m_rgAmmo(index) + clip;
+        }
 
         return 0;
     }    
@@ -340,11 +347,14 @@ class CBotWeapon
     int getSecondaryAmmo( RCBot@ bot )
     {
         CBasePlayerWeapon@ weap  = cast<CBasePlayerWeapon@>(m_pWeaponEntity.GetEntity());
-        
+
         int index = weap.SecondaryAmmoIndex();
 
         if ( index >= 0 )
-            return bot.m_pPlayer.m_rgAmmo(index) + weap.m_iClip2;
+        {
+            int clip2 = (weap.m_iClip2 < 0) ? 0 : weap.m_iClip2; // m_iClip2=-1表示无弹夹，视为0
+            return bot.m_pPlayer.m_rgAmmo(index) + clip2;
+        }
 
         return 0;
     }      
@@ -385,6 +395,7 @@ class CBotWeapon
 	{
         CBasePlayerWeapon@ weap  = cast<CBasePlayerWeapon@>(m_pWeaponEntity.GetEntity());
 
+        // m_iClip < 0 表示无弹夹武器(如手雷/Snark)，不需要换弹
         bool ret = weap !is null && weap.m_iClip == 0 && !outOfAmmo(bot.m_pPlayer);
 
         if (ret )
