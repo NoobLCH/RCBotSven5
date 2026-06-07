@@ -2580,10 +2580,15 @@ void te_playerattachment(CBasePlayer@ target, float vOffset=51.0f,
 		}
 		else
 		{
-			if ( m_pDisableUtil.GetBool() == false )
+			// 用户主动发起的调度(如ff/fm)不被utility评估替换
+			if ( m_pCurrentSchedule !is null && m_pCurrentSchedule.m_bUserCommand )
 			{
 				m_bReEvaluateUtility = false;
-				
+			}
+			else if ( m_pDisableUtil.GetBool() == false )
+			{
+				m_bReEvaluateUtility = false;
+
 				@m_pCurrentSchedule = utils.execute(this);
 
 				if ( @m_pCurrentSchedule != null )

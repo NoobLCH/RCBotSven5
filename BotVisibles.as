@@ -118,13 +118,9 @@ class CBotVisibles
 			if ( m_pBot.m_pBlocking.GetEntity() !is m_pCurrentEntity )
 			{
 				if ( groundEntity !is m_pCurrentEntity )
-				{				
-					if ( !player.FInViewCone(m_pCurrentEntity) )
-					{
-						setVisible(m_pCurrentEntity,false,false);
-						//UTIL_DebugMsg(m_pBot.m_pPlayer,"!FInViewCone " + m_pCurrentEntity.GetClassname(),DEBUG_VISIBLES);
-						continue;
-					}			
+				{
+					// 移除FOV限制，允许360度索敌
+					// 原代码: if ( !player.FInViewCone(m_pCurrentEntity) ) { setVisible(false,false); continue; }
 
 					bBodyVisible = UTIL_IsVisible(player.EyePosition(),m_pCurrentEntity,player);
 
