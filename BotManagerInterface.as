@@ -517,7 +517,11 @@ namespace BotManager
 			
 			
 			
-			g_EngineFuncs.RunPlayerMove( m_pPlayer.edict(), m_pPlayer.pev.angles, 
+			// 托管玩家是真实玩家，pev.angles的pitch是反转并除以3的模型角度
+			// 传给RunPlayerMove时需要用pev.v_angle（真实视角），否则瞄准上下反转
+			Vector vRunAngles = m_bPossessed ? m_pPlayer.pev.v_angle : m_pPlayer.pev.angles;
+
+			g_EngineFuncs.RunPlayerMove( m_pPlayer.edict(), vRunAngles, 
 				m_fForwardMove, m_fSideMove, m_fUpMove, 
 				m_pPlayer.pev.button, m_pPlayer.pev.impulse, uint8( m_iMSecInterval ) );
 		}
@@ -695,7 +699,8 @@ namespace BotManager
 
 			//SayMessage(ListenPlayer(),"YOU TYPED " + args[0] + " | " + args[1]);
 
-			CBasePlayer@ talking_to = UTIL_FindPlayer(args[0],talker,true);
+			// 搜索所有玩家（包括托管玩家），由FindBot判断是否为有效BOT
+			CBasePlayer@ talking_to = UTIL_FindPlayer(args[0],talker,false);
 
 			if ( talking_to !is null )
 			{
