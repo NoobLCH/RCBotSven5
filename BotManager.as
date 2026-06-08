@@ -78,6 +78,9 @@ final class RCBot : BotManager::BaseBot
 	float m_fNextRespawnTPRetry = 0; // retry timer for blocked TP
 	Vector m_vRespawnTPOrigin; // BOT复活后传送的坐标
 
+	// ff目标记录：复活tp后自动重新执行ff
+	EHandle m_hForceFollowTarget;
+
 	Vector m_vObjectiveOrigin;
 	bool m_bObjectiveOriginValid;
 
@@ -344,6 +347,7 @@ final class RCBot : BotManager::BaseBot
 			{
 				bBotHeard = true;
 				RCBotSchedule@ sched = SCHED_CREATE_NEW();
+				m_hForceFollowTarget = talker; // 在SCHED_CREATE_NEW之后设置，避免被清除
 				sched.m_bUserCommand = true;
 				sched.addTask(CBotForceFollowTask(talker));
 				OK = true;
@@ -1417,6 +1421,7 @@ return true;
 	RCBotSchedule@ SCHED_CREATE_NEW ()
 	{
 		@m_pCurrentSchedule = RCBotSchedule();
+		m_hForceFollowTarget = null; // 新Schedule覆盖ff时清除记录
 
 		return m_pCurrentSchedule;
 	}
@@ -1821,6 +1826,16 @@ return true;
 					if (botTP(vecSrc, true)) {
 						Say("Respawn TP success");
 						m_fNextRespawnTPRetry = 0;
+
+						// 复活tp成功后，恢复ff指令
+						CBaseEntity@ pFollowTarget = m_hForceFollowTarget.GetEntity();
+						if (pFollowTarget !is null && pFollowTarget.IsAlive())
+						{
+							RCBotSchedule@ sched = SCHED_CREATE_NEW();
+							sched.m_bUserCommand = true;
+							sched.addTask(CBotForceFollowTask(pFollowTarget));
+							Say("Resuming force follow");
+						}
 					}
 					else {
 						if (init)

@@ -785,6 +785,7 @@ namespace BotManager
 			g_Hooks.RegisterHook( Hooks::Game::MapChange, MapChangeHook( this.MapChange ) );
 			g_Hooks.RegisterHook( Hooks::Player::ClientDisconnect, ClientDisconnectHook( this.ClientDisconnect ) );
 			g_Hooks.RegisterHook( Hooks::Player::PlayerKilled, PlayerKilledHook ( this.PlayerKilled) );
+			g_Hooks.RegisterHook( Hooks::Player::PlayerPreThink, PlayerPreThinkHook( this.PlayerPreThink) );
 
 			//g_Hooks.RegisterHook( Hooks::CEntityFuncs, DispatchKeyValueHook(this.DispatchKeyValue) );
 			EnableSchedule();
@@ -829,7 +830,22 @@ namespace BotManager
 			
 			return HOOK_CONTINUE;
 		}
-		
+
+		// 托管玩家每帧执行RunPlayerMove，覆盖客户端输入避免卡顿
+		HookReturnCode PlayerPreThink( CBasePlayer@ pPlayer )
+		{
+			if( ( pPlayer.pev.flags & FL_FAKECLIENT ) != 0 )
+				return HOOK_CONTINUE;
+
+			BaseBot@ pBot = FindBot( pPlayer );
+			if( pBot !is null && pBot.m_bPossessed )
+			{
+				pBot.RunPlayerMove();
+			}
+
+			return HOOK_CONTINUE;
+		}
+
 		HookReturnCode ClientDisconnect( CBasePlayer@ pPlayer )
 		{
 			if( ( pPlayer.pev.flags & FL_FAKECLIENT ) != 0 )
@@ -1107,7 +1123,9 @@ namespace BotManager
 				BaseBot@ pBot = m_Bots[ uiIndex ];
 				
 				pBot.Think();
-				pBot.RunPlayerMove();
+				// 托管玩家的RunPlayerMove在PlayerPreThink中每帧执行，此处跳过
+				if ( !pBot.m_bPossessed )
+					pBot.RunPlayerMove();
 			}
 
 			uint realBotCount = GetRealBotCount();
