@@ -518,29 +518,25 @@ namespace BotManager
 			// 对真实玩家调用会导致卡顿/定在空中，改用WalkMove+pev属性
 			if ( m_bPossessed )
 			{
-				// 强制引擎使用bot设置的视角，不被客户端输入覆盖
-				m_pPlayer.pev.fixangle = 1; // FAM_FORCEVIEWANGLES
-
-				// 使用WalkMove移动：有碰撞检测，不会穿墙
 				if ( m_bMoveToValid )
 				{
-					/* Math.MakeVectors(m_pPlayer.pev.v_angle);
-					Vector vNewVelocity = g_Engine.v_forward * m_fForwardMove + g_Engine.v_right * m_fSideMove + Vector(0,0,m_fUpMove);
+					Math.MakeVectors(m_pPlayer.pev.angles);
+					Vector vNewVelocity = g_Engine.v_forward * m_fForwardMove + g_Engine.v_right * m_fSideMove;
 					// 保留重力分量（z轴由引擎物理处理）
 					vNewVelocity.z = m_pPlayer.pev.velocity.z;
-					m_pPlayer.pev.velocity = vNewVelocity; */
-					float flDist = m_fDesiredMoveSpeed * 0.1f; // 速度 * 时间间隔
-					g_EngineFuncs.WalkMove( m_pPlayer.edict(), yaw, flDist, WALKMOVE_NORMAL );
+					if (m_fForwardMove > 0 || m_fSideMove > 0)
+						m_pPlayer.pev.velocity = vNewVelocity;
 				}
 				// pev.button 已在 Think() 中通过 PressButton() 设置
 				// pev.impulse 同理
 			}
-			else
-			{
-				g_EngineFuncs.RunPlayerMove( m_pPlayer.edict(), m_pPlayer.pev.angles, 
-					m_fForwardMove, m_fSideMove, m_fUpMove, 
-					m_pPlayer.pev.button, m_pPlayer.pev.impulse, uint8( m_iMSecInterval ) );
-			}
+			// 托管玩家是真实玩家，pev.angles的pitch是反转并除以3的模型角度
+			// 传给RunPlayerMove时需要用pev.v_angle（真实视角），否则瞄准上下反转
+			Vector vRunAngles = m_bPossessed ? m_pPlayer.pev.v_angle + m_pPlayer.pev.punchangle : m_pPlayer.pev.angles;
+
+			g_EngineFuncs.RunPlayerMove( m_pPlayer.edict(), vRunAngles, 
+				m_fForwardMove, m_fSideMove, m_fUpMove, 
+				m_pPlayer.pev.button, m_pPlayer.pev.impulse, uint8( m_bPossessed ? 0 : m_iMSecInterval ) );
 		}
 	}
 
@@ -1096,8 +1092,6 @@ namespace BotManager
 				int iIndex = m_Bots.findByRef( @pBot );
 				if ( iIndex != -1 )
 				{
-					// 恢复玩家正常视角控制
-					pPlayer.pev.fixangle = 0;
 					m_Bots.removeAt( uint( iIndex ) );
 					pBot.Disconnected();
 					g_Game.AlertMessage( at_console, "BotManager: Player %1 left possession mode\n", pPlayer.pev.netname );
