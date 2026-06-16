@@ -352,6 +352,61 @@ final class RCBot : BotManager::BaseBot
 				sched.addTask(CBotForceFollowTask(talker));
 				OK = true;
 			}
+			else if ( args[1] == "fp" ) // 强制BOT去按玩家指向的按钮，不做路点检查
+			{
+				bBotHeard = true;
+
+				// fp 0 = 停止按按钮
+				if ( args.length() > 2 && args[2] == "0" )
+				{
+					// 检查当前是否在执行fp任务，如果是则完成它
+					if ( m_pCurrentSchedule !is null )
+					{
+						for ( uint t = 0; t < m_pCurrentSchedule.m_pTasks.length(); t++ )
+					{
+						CBotForcePressTask@ fpTask = cast<CBotForcePressTask@>(m_pCurrentSchedule.m_pTasks[t]);
+							if ( fpTask !is null )
+							{
+								fpTask.m_iPressMode = 0;
+								OK = true;
+								break;
+							}
+						}
+					}
+					if ( !OK )
+						Say("NEGATIVE");
+				}
+				else
+				{
+					// 获取玩家准星指向的实体
+					g_EngineFuncs.MakeVectors(talker.pev.v_angle);
+					TraceResult tr;
+					g_Utility.TraceLine(talker.EyePosition(), talker.EyePosition() + g_Engine.v_forward * 2048.0f, dont_ignore_monsters, dont_ignore_glass, talker.edict(), tr);
+
+					CBaseEntity@ pTarget = g_EntityFuncs.Instance(tr.pHit);
+
+					// 检查是否是可以按的实体
+					if ( pTarget !is null && (pTarget.GetClassname() == "func_button" || pTarget.GetClassname() == "momentary_rot_button" || pTarget.GetClassname() == "func_rot_button") )
+					{
+						int iPressMode = -1; // 默认按一次
+						if ( args.length() > 2 )
+						{
+							int iParam = atoi(args[2]);
+							if ( iParam == 1 )
+								iPressMode = 1; // 不停按
+							else if ( iParam >= 2 )
+								iPressMode = iParam; // 按N次
+						}
+
+						RCBotSchedule@ sched = SCHED_CREATE_NEW();
+						sched.m_bUserCommand = true;
+						sched.addTask(CBotForcePressTask(pTarget, iPressMode));
+						OK = true;
+					}
+					else
+						Say("NEGATIVE: Not a button");
+				}
+			}
 			else if ( args[1] == "wait")
 			{
 				RCBotSchedule@ sched = SCHED_CREATE_NEW();

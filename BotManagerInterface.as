@@ -798,6 +798,7 @@ namespace BotManager
 			g_Hooks.RegisterHook( Hooks::Game::MapChange, MapChangeHook( this.MapChange ) );
 			g_Hooks.RegisterHook( Hooks::Player::ClientDisconnect, ClientDisconnectHook( this.ClientDisconnect ) );
 			g_Hooks.RegisterHook( Hooks::Player::PlayerKilled, PlayerKilledHook ( this.PlayerKilled) );
+			g_Hooks.RegisterHook( Hooks::Weapon::WeaponTertiaryAttack, WeaponTertiaryAttackHook( this.WeaponTertiaryAttack) );
 
 			//g_Hooks.RegisterHook( Hooks::CEntityFuncs, DispatchKeyValueHook(this.DispatchKeyValue) );
 			EnableSchedule();
@@ -875,7 +876,22 @@ namespace BotManager
 
 			return HOOK_CONTINUE;
 	
-		} 
+		}
+
+		// 托管玩家使用第三开火时退出托管
+		HookReturnCode WeaponTertiaryAttack( CBasePlayer@ pPlayer, CBasePlayerWeapon@ pWeapon )
+		{
+			if ( pPlayer is null ) return HOOK_CONTINUE;
+
+			BaseBot@ pBot = FindBot( pPlayer );
+			if ( pBot !is null && pBot.m_bPossessed )
+			{
+				UnpossessPlayer( pPlayer );
+				g_PlayerFuncs.SayText( pPlayer, "托管模式已关闭（第三开火）\n" );
+			}
+
+			return HOOK_CONTINUE;
+		}
 
 		void ReadMapConfig()
 		{

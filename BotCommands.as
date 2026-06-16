@@ -50,6 +50,8 @@ CConCommand@ m_pRCBotWaypointMove2;
 CConCommand@ m_pBeliefDebug;
 CConCommand@ m_pRCBotWaypointAuto;
 CConCommand@ m_pDebugBotCmd;
+CConCommand@ m_pLeave;
+CConCommand@ m_pBack;
 // List of all console variables used by rcbot plugin below
 CCVar@ m_pVisRevs;
 CCVar@ m_pNavRevs;
@@ -165,6 +167,8 @@ void PluginInit()
 	@m_pScriptEntOffset = @CConCommand ( "script_entity_offset", "offset for script entity index", @RCBot_ScriptEntityOffset );
 	@m_pBotCam = @CConCommand( "botcam", "Bot camera", @RCBot_BotCam );
 	@m_pBeliefDebug = @CConCommand( "belief", "show belief of debug bot at current waypoint", @RCBot_Belief );
+	@m_pLeave = @CConCommand( "leave", "Force a player into possession mode", @RCBot_Leave );
+	@m_pBack = @CConCommand( "back", "Force a player out of possession mode", @RCBot_Back );
 
 	@m_pRCBotSearch = @CConCommand( "search", "test search func", @RCBotSearch );
 
@@ -908,3 +912,60 @@ void PathWaypoint_RemovePathsTo ( const CCommand@ args )
 // ------------------------------------
 // COMMANDS - 	end
 // ------------------------------------
+
+void RCBot_Leave ( const CCommand@ args )
+{
+	if ( args.ArgC() < 2 )
+	{
+		BotMessage("Usage: leave <player name>");
+		return;
+	}
+
+	CBasePlayer@ pPlayer = UTIL_FindPlayer(args[1]);
+
+	if ( pPlayer is null )
+	{
+		BotMessage("Player not found: " + args[1]);
+		return;
+	}
+
+	BotManager::BaseBot@ existingBot = g_BotManager.FindBot(pPlayer);
+	if ( existingBot !is null )
+	{
+		BotMessage("Player already in possession mode or is a bot: " + pPlayer.pev.netname);
+		return;
+	}
+
+	BotManager::BaseBot@ pBot = g_BotManager.PossessPlayer(pPlayer);
+	if ( pBot !is null )
+		BotMessage("Player " + pPlayer.pev.netname + " entered possession mode");
+	else
+		BotMessage("Failed to possess player: " + pPlayer.pev.netname);
+}
+
+void RCBot_Back ( const CCommand@ args )
+{
+	if ( args.ArgC() < 2 )
+	{
+		BotMessage("Usage: back <player name>");
+		return;
+	}
+
+	CBasePlayer@ pPlayer = UTIL_FindPlayer(args[1]);
+
+	if ( pPlayer is null )
+	{
+		BotMessage("Player not found: " + args[1]);
+		return;
+	}
+
+	BotManager::BaseBot@ existingBot = g_BotManager.FindBot(pPlayer);
+	if ( existingBot is null || !existingBot.m_bPossessed )
+	{
+		BotMessage("Player is not in possession mode: " + pPlayer.pev.netname);
+		return;
+	}
+
+	g_BotManager.UnpossessPlayer(pPlayer);
+	BotMessage("Player " + pPlayer.pev.netname + " left possession mode");
+}

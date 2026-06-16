@@ -80,7 +80,7 @@ final class CBotWeaponsInfo
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_grapple",0.0,0.0,WEAP_FL_NONE,0)); // will be handled in task code
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.8,"weapon_handgrenade",256.0,512.0,WEAP_FL_GRENADE|WEAP_FL_PRIMARY_EXPLOSIVE|WEAP_FL_UNDERWATER|WEAP_FL_PRIMARY_EXPLOSIVE,15)); // will be handled in task code
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_satchel",256.0,512.0,WEAP_FL_GRENADE|WEAP_FL_PRIMARY_EXPLOSIVE|WEAP_FL_UNDERWATER,1));
-        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_tripmine",0.0,8.0,WEAP_FL_SECONDARY|WEAP_FL_UNDERWATER|WEAP_FL_PRIMARY_EXPLOSIVE,1,0.0,1500.0)); //use secondary only
+        m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_tripmine",0.0,512.0,WEAP_FL_SECONDARY|WEAP_FL_UNDERWATER,0,0.0,1500.0)); //use secondary only
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_snark",0.0,512.0,WEAP_FL_GRENADE|WEAP_FL_PRIMARY_EXPLOSIVE|WEAP_FL_UNDERWATER,1));
         m_pWeaponInfo.insertLast(CBotWeaponInfo(0.6,"weapon_sniperrifle",512.0,8000.0,WEAP_FL_SNIPE,10)); 
         m_pWeaponInfo.insertLast(CBotWeaponInfo(1.0,"weapon_m249",60.0,2400.0,WEAP_FL_NONE,11)); 

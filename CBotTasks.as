@@ -3287,3 +3287,106 @@ class CBotForceFollowTask : RCBotTask
         bot.setMove(vecPlayer);
     }
 }
+
+// forcepress: 强制BOT去按按钮，不做路点检查
+class CBotForcePressTask : RCBotTask
+{
+    EHandle m_pButton;
+    Vector m_vButtonOrigin;
+    bool m_bIsShootable;
+    int m_iPressMode; // 0=停止, 1=不停按, 2+=按N次, -1=按一次
+    int m_iPressCount; // 已按次数
+    int m_iPrevFrame;
+
+    string DebugString ()
+    {
+        return "CBotForcePressTask";
+    }
+
+    CBotForcePressTask ( CBaseEntity@ pButton, int iPressMode = -1 )
+    {
+        m_pButton = pButton;
+        m_vButtonOrigin = UTIL_EntityOrigin(pButton);
+        m_bIsShootable = pButton.pev.health > 0;
+        m_iPressMode = iPressMode;
+        m_iPressCount = 0;
+        m_iPrevFrame = int(pButton.pev.frame);
+        setTimeout(60.0f);
+    }
+
+    void execute ( RCBot@ bot )
+    {
+        // 停止模式
+        if ( m_iPressMode == 0 )
+        {
+            Complete();
+            return;
+        }
+
+        CBaseEntity@ pButton = m_pButton.GetEntity();
+        if ( pButton is null )
+        {
+            Failed();
+            return;
+        }
+
+        // 按钮frame变化说明按成功了
+        if ( pButton.pev.frame != m_iPrevFrame )
+        {
+            m_iPressCount++;
+            m_iPrevFrame = int(pButton.pev.frame);
+
+            // 按一次模式：成功后完成
+            if ( m_iPressMode == -1 )
+            {
+                Complete();
+                return;
+            }
+            // 按N次模式：达到次数后完成
+            if ( m_iPressMode >= 2 && m_iPressCount >= m_iPressMode )
+            {
+                Complete();
+                return;
+            }
+        }
+
+        bot.setLookAt(m_vButtonOrigin, PRIORITY_TASK+1);
+
+        // 可射击按钮：检查BOT是否有远程武器可以直接射击
+        if ( m_bIsShootable )
+        {
+            CBotWeapon@ pBestWeapon = bot.m_pWeapons.findBestWeapon(bot, m_vButtonOrigin, pButton);
+            if ( pBestWeapon !is null && !pBestWeapon.IsMelee() && !pBestWeapon.IsRPG() && !pBestWeapon.m_pWeaponInfo.hasFlags(WEAP_FL_GRENADE) )
+            {
+                // 有远程武器，切换并直接射击，不需要走过去
+                if ( !bot.isCurrentWeapon(pBestWeapon) )
+                {
+                    bot.selectWeapon(pBestWeapon);
+                    return;
+                }
+                if ( bot.m_pPlayer.FInViewCone(pButton) )
+                    bot.PressButton(IN_ATTACK);
+                return;
+            }
+        }
+
+        // 没有远程武器或不可射击：走过去按E
+        if ( (m_vButtonOrigin - bot.m_pPlayer.pev.origin).Length2D() > 36 )
+        {
+            bot.setMove(m_vButtonOrigin);
+        }
+        else
+        {
+            bot.StopMoving();
+
+            // 面向按钮时按USE或开火
+            if ( bot.m_pPlayer.FInViewCone(pButton) )
+            {
+                if ( m_bIsShootable )
+                    bot.PressButton(IN_ATTACK);
+                else
+                    bot.PressButton(IN_USE);
+            }
+        }
+    }
+}
