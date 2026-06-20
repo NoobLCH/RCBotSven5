@@ -913,15 +913,28 @@ void PathWaypoint_RemovePathsTo ( const CCommand@ args )
 // COMMANDS - 	end
 // ------------------------------------
 
+// 按名字或#id查找玩家，#1~#32用FindPlayerByIndex，否则用UTIL_FindPlayer
+CBasePlayer@ RCBot_FindPlayerByIdOrName ( string szArg )
+{
+	if ( szArg.Length() > 1 && szArg[0] == '#' )
+	{
+		int iId = atoi(szArg.SubString(1));
+		if ( iId >= 1 && iId <= 32 )
+			return g_PlayerFuncs.FindPlayerByIndex( iId );
+		return null;
+	}
+	return UTIL_FindPlayer( szArg );
+}
+
 void RCBot_Leave ( const CCommand@ args )
 {
 	if ( args.ArgC() < 2 )
 	{
-		BotMessage("Usage: leave <player name>");
+		BotMessage("Usage: leave <player name | #id>");
 		return;
 	}
 
-	CBasePlayer@ pPlayer = UTIL_FindPlayer(args[1]);
+	CBasePlayer@ pPlayer = RCBot_FindPlayerByIdOrName(args[1]);
 
 	if ( pPlayer is null )
 	{
@@ -947,11 +960,11 @@ void RCBot_Back ( const CCommand@ args )
 {
 	if ( args.ArgC() < 2 )
 	{
-		BotMessage("Usage: back <player name>");
+		BotMessage("Usage: back <player name | #id>");
 		return;
 	}
 
-	CBasePlayer@ pPlayer = UTIL_FindPlayer(args[1]);
+	CBasePlayer@ pPlayer = RCBot_FindPlayerByIdOrName(args[1]);
 
 	if ( pPlayer is null )
 	{
