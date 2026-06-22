@@ -679,24 +679,107 @@ namespace BotManager
 				return HOOK_CONTINUE;
 
 			// 托管模式命令：!leave 进入/退出托管，!back 退出托管
+			// !leave <玩家名|#id> 进入托管并传送到该玩家身边执行ff跟随
 			if ( args[0] == "!leave" )
 			{
 				BaseBot@ existingBot = FindBot(talker);
-				if ( existingBot !is null && existingBot.m_bPossessed )
+				bool bHasParam = ( args.length() > 1 );
+
+				// 无参数且已在托管中：取消托管
+				if ( !bHasParam && existingBot !is null && existingBot.m_bPossessed )
 				{
-					// 已在托管中，再输入一次取消托管
 					UnpossessPlayer(talker);
 					g_PlayerFuncs.SayText(talker, "托管模式已关闭\n");
+					return HOOK_HANDLED;
 				}
-				else if ( existingBot is null )
+
+				// 有参数时解析目标玩家（玩家名或#id）
+				CBasePlayer@ pTarget = null;
+				if ( bHasParam )
 				{
-					// 进入托管
-					BaseBot@ pBot = PossessPlayer(talker);
-					if ( pBot !is null )
-						g_PlayerFuncs.SayText(talker, "托管模式已开启，输入 !back 或 !leave 退出\n");
+					string szArg = args[1];
+					if ( szArg.Length() > 1 && szArg[0] == '#' )
+					{
+						int iId = atoi(szArg.SubString(1));
+						if ( iId >= 1 && iId <= 32 )
+							@pTarget = g_PlayerFuncs.FindPlayerByIndex( iId );
+					}
 					else
-						g_PlayerFuncs.SayText(talker, "托管模式开启失败\n");
+						@pTarget = UTIL_FindPlayer( szArg );
+
+					if ( pTarget is null )
+					{
+						g_PlayerFuncs.SayText(talker, "未找到目标玩家: " + args[1] + "\n");
+						return HOOK_HANDLED;
+					}
+					if ( pTarget is talker )
+					{
+						g_PlayerFuncs.SayText(talker, "不能传送到自己\n");
+						return HOOK_HANDLED;
+					}
 				}
+
+				// 如果未托管，先进入托管
+				BaseBot@ pBot = existingBot;
+				if ( pBot is null )
+				{
+					@pBot = PossessPlayer(talker);
+					if ( pBot is null )
+					{
+						g_PlayerFuncs.SayText(talker, "托管模式开启失败\n");
+						return HOOK_HANDLED;
+					}
+				}
+				else if ( !pBot.m_bPossessed )
+				{
+					// 是正式Bot，不能托管
+					g_PlayerFuncs.SayText(talker, "无法对Bot执行托管\n");
+					return HOOK_HANDLED;
+				}
+
+				// 有参数：执行 tp + ff 到目标玩家
+				if ( bHasParam )
+				{
+					RCBot@ rcbot = cast<RCBot@>(pBot);
+					if ( rcbot is null )
+					{
+						g_PlayerFuncs.SayText(talker, "托管模式已开启（非RCBot，未执行tp/ff）\n");
+						return HOOK_HANDLED;
+					}
+
+					// 计算传送坐标：目标玩家前方36unit（同tp指令逻辑）
+					Vector vecAngle = Vector(0, pTarget.pev.angles.y, 0);
+					Math.MakeVectors(vecAngle);
+					Vector vecSrc = pTarget.pev.origin + ((((pTarget.pev.flags & FL_DUCKING) != 0) && ((talker.pev.flags & FL_DUCKING) == 0)) ? Vector(0,0,18) : g_vecZero) + g_Engine.v_forward * 36;
+
+					if ( !rcbot.checkTPNoBlock(vecSrc) )
+					{
+						g_PlayerFuncs.SayText(talker, "托管模式已开启，但传送落点被阻挡\n");
+						return HOOK_HANDLED;
+					}
+
+					// 开启复活tp模式2（复活时传送到目标玩家身后）
+					rcbot.m_iRespawnTPMode = 2;
+					rcbot.m_hRespawnTPPlayer = pTarget;
+					rcbot.m_fNextRespawnTPRetry = 0;
+					rcbot.m_vRespawnTPOrigin = vecSrc;
+
+					// 执行传送
+					rcbot.botTP(vecSrc);
+
+					// 执行ff跟随目标玩家
+					RCBotSchedule@ sched = rcbot.SCHED_CREATE_NEW();
+					rcbot.m_hForceFollowTarget = pTarget;
+					sched.m_bUserCommand = true;
+					sched.addTask(CBotForceFollowTask(pTarget));
+
+					g_PlayerFuncs.SayText(talker, "托管模式已开启，已传送到 " + pTarget.pev.netname + " 身边并跟随\n");
+				}
+				else
+				{
+					g_PlayerFuncs.SayText(talker, "托管模式已开启，输入 !back 或 !leave 退出\n");
+				}
+
 				return HOOK_HANDLED;
 			}
 			else if ( args[0] == "!back" )
