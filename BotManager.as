@@ -1917,7 +1917,7 @@ return true;
 		}
 		
 		DoTasks(); // do schedule/tasks 
-		DoVisibles(); // update visible list
+		// DoVisibles() 已移至 BotManager.Think() 错峰执行
 
 		DoListen(); // update nearby listenable objects
 

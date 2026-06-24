@@ -560,6 +560,9 @@ namespace BotManager
 		uint m_iBotQuota = 0;
 		float m_fAddBotTime = 0;
 		
+		// DoVisibles错峰：每次Think只处理一个BOT的可见性更新
+		uint m_uiVisiblesBotIndex = 0;
+		
 		BotManager( CreateBotFn@ pCreateBotFn )
 		{
 			@m_pCreateBotFn = pCreateBotFn !is null ? pCreateBotFn : @CreateDefaultBot;
@@ -577,6 +580,7 @@ namespace BotManager
 				g_Hooks.RemoveHook( Hooks::Player::ClientSay, ClientSayHook( this.ClientSay ) );
 				g_Hooks.RemoveHook( Hooks::Player::PlayerTakeDamage, PlayerTakeDamageHook( this.PlayerTakeDamage) );
 				g_Hooks.RemoveHook( Hooks::Player::PlayerKilled, PlayerKilledHook( this.PlayerKilled) );
+				g_Hooks.RemoveHook( Hooks::Weapon::WeaponTertiaryAttack, WeaponTertiaryAttackHook( this.WeaponTertiaryAttack) );
 			}
 		}
 
@@ -1222,6 +1226,16 @@ namespace BotManager
 				pBot.RunPlayerMove();
 			}
 
+			// DoVisibles错峰：每次Think只处理一个BOT的可见性更新
+			// 1个BOT=0.1s频率，每多1个BOT频率降低0.1s，降低多BOT时的CPU峰值
+			if ( m_Bots.length() > 0 )
+			{
+				RCBot@ rcbot = cast<RCBot@>(m_Bots[m_uiVisiblesBotIndex]);
+				if ( rcbot !is null )
+					rcbot.DoVisibles();
+				m_uiVisiblesBotIndex = (m_uiVisiblesBotIndex + 1) % m_Bots.length();
+			}
+
 			uint realBotCount = GetRealBotCount();
 
 			if ( realBotCount < m_iBotQuota )
@@ -1257,7 +1271,8 @@ namespace BotManager
 				
 			}
 			
-			if ( g_MapInit == false )
+			// 无BOT时不执行路点Think（可见性表计算开销大，无BOT时不需要）
+			if ( g_MapInit == false && m_Bots.length() > 0 )
 				g_Waypoints.Think();
 
 
