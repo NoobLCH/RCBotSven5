@@ -425,7 +425,10 @@ final class RCBot : BotManager::BaseBot
 					// search for a number
 					while ( arg < args.length() )
 					{
-						fTime = atof(args[arg++]);
+						// 先取值再独立自增，避免 args[arg++] 这种值被使用的后置
+						// 自增（2026-09-30 版 sven_jit 会错误编译，详见 FileBuffer.as）
+						fTime = atof(args[arg]);
+						arg++;
 
 						if ( fTime > 0.0f ) // valid number
 							break;

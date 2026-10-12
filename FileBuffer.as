@@ -186,8 +186,13 @@ class FileBuffer
 
     uint readByte( )
     {
-        uint8 nib0 = FromAscii(data[readPos++]);
-        uint8 nib1 = FromAscii(data[readPos++]);
+        // 注意：不要写成 data[readPos++]。值被使用的后置自增会被9月30版
+        // sven_jit 错误编译（valueRegister转发在多消费者时失效，INC 通过
+        // 空指针写内存导致服务器崩溃）。改为先取值再独立自增。
+        uint8 nib0 = FromAscii(data[readPos]);
+        readPos++;
+        uint8 nib1 = FromAscii(data[readPos]);
+        readPos++;
 
         return ((nib1) + (nib0 << 4));
     }
@@ -215,18 +220,23 @@ class FileBuffer
     {
         string ret = "";
 
-        while (len-- > 0)
+        // 注意：条件中不要使用 len-- 后置自减（同 readByte 处注释，sven_jit
+        // 2026-09-30 版会把 LDV/RDR4/DECi 序列错误编译成向空指针写内存）。
+        while (len > 0)
         {
+            len--;
+
             uint8 byte = readByte();
 
             if ( byte == 0 )
-                break;            
+                break;
 
             ret += CharFromAscii(byte);
         }
 
-        while ( len -- > 0 )
+        while ( len > 0 )
         {
+            len--;
             readByte();
         }
 
@@ -270,8 +280,9 @@ class FileBuffer
             len--;
         }
 
-        while (len-- > 0)
+        while (len > 0)
         {
+            len--;
             writeByte(0);
         }
     }
